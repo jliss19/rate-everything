@@ -57,6 +57,11 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        rating: {
+          gold: "hsl(var(--rating-gold))",
+          silver: "hsl(var(--rating-silver))",
+          bronze: "hsl(var(--rating-bronze))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
