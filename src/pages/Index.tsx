@@ -48,17 +48,11 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between gap-8">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
               RateEverything
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Rate anything in the universe. Movies, books, places, people, objects, concepts – if it exists, you can rate it.
-            </p>
-          </div>
-          
-          <div className="flex justify-center">
             <SearchBar onSearch={handleSearch} loading={isLoading} />
           </div>
         </div>
