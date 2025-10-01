@@ -3,8 +3,15 @@ import { SearchBar } from "@/components/SearchBar";
 import { SearchResults, WikiItem } from "@/components/SearchResults";
 import { ItemDetail } from "@/components/ItemDetail";
 import { searchWikipedia } from "@/lib/wikimedia";
-import { Star, TrendingUp, Users, Zap } from "lucide-react";
+import { Star, TrendingUp, Users, Zap, Menu, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Index = () => {
   const [searchResults, setSearchResults] = useState<WikiItem[]>([]);
@@ -49,11 +56,37 @@ const Index = () => {
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between gap-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
               RateEverything
             </h1>
-            <SearchBar onSearch={handleSearch} loading={isLoading} />
+            
+            <div className="flex-1">
+              <SearchBar onSearch={handleSearch} loading={isLoading} />
+            </div>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="bg-card border-border">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card border-border z-50 w-56">
+                <DropdownMenuItem className="cursor-pointer hover:bg-accent">
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  Top 100 Most Rated
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer hover:bg-accent">
+                  <Star className="mr-2 h-4 w-4" />
+                  Top 100 Highest Rated
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button className="whitespace-nowrap">
+              <User className="mr-2 h-4 w-4" />
+              Sign In
+            </Button>
           </div>
         </div>
       </header>
