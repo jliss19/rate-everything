@@ -355,47 +355,56 @@ const Forum = () => {
                 className="bg-card border-border hover:border-primary transition-colors cursor-pointer"
                 onClick={() => setSelectedPost(post)}
               >
-                <CardContent className="p-0">
-                  <div className="flex gap-2">
-                    {/* Upvote section */}
-                    <div className="flex flex-col items-center bg-muted/50 p-2 rounded-l-lg">
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:text-primary">
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <span className="text-xs font-bold my-1">{post.likes}</span>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="secondary" className="text-xs">{post.category}</Badge>
+                      <span>•</span>
+                      <span>Posted by u/{post.author}</span>
+                      <span>•</span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{post.timestamp}</span>
+                      </div>
+                      {post.isHot && (
+                        <>
+                          <span>•</span>
+                          <Badge variant="destructive" className="text-xs">Hot</Badge>
+                        </>
+                      )}
                     </div>
                     
-                    {/* Content section */}
-                    <div className="flex-1 p-4">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                        <Badge variant="secondary" className="text-xs">{post.category}</Badge>
-                        <span>•</span>
-                        <span>Posted by u/{post.author}</span>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{post.timestamp}</span>
-                        </div>
-                        {post.isHot && (
-                          <>
-                            <span>•</span>
-                            <Badge variant="destructive" className="text-xs">Hot</Badge>
-                          </>
-                        )}
-                      </div>
-                      
-                      <h3 className="text-lg font-semibold text-foreground hover:text-primary transition-colors mb-2">
-                        {post.title}
-                      </h3>
-                      
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{post.content}</p>
-                      
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1 hover:bg-muted rounded px-2 py-1">
-                          <MessageCircle className="h-4 w-4" />
-                          <span>{post.replies.length} Comments</span>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2 hover:text-primary"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ThumbsUp className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm font-medium min-w-[2rem] text-center">{post.likes}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2 hover:text-destructive"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ThumbsUp className="h-4 w-4 rotate-180" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-lg font-semibold text-foreground hover:text-primary transition-colors mb-2">
+                    {post.title}
+                  </h3>
+                  
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{post.content}</p>
+                  
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1 hover:bg-muted rounded px-2 py-1">
+                      <MessageCircle className="h-4 w-4" />
+                      <span>{post.replies.length} Comments</span>
                     </div>
                   </div>
                 </CardContent>
