@@ -57,9 +57,9 @@ export const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
         <SelectTrigger className="w-[110px] bg-card border-border">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
-        <SelectContent className="bg-card border-border z-50">
+        <SelectContent className="bg-card border-border z-50 [&_[data-radix-select-item-indicator]]:hidden">
           {popularCategories.map((cat) => (
-            <SelectItem key={cat} value={cat} className="[&>span:last-child]:hidden">
+            <SelectItem key={cat} value={cat}>
               {cat}
             </SelectItem>
           ))}
