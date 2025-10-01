@@ -61,10 +61,6 @@ const Index = () => {
               RateEverything
             </h1>
             
-            <div className="flex-1">
-              <SearchBar onSearch={handleSearch} loading={isLoading} />
-            </div>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="bg-card border-border">
@@ -82,6 +78,10 @@ const Index = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            <div className="flex-1">
+              <SearchBar onSearch={handleSearch} loading={isLoading} />
+            </div>
             
             <Button className="whitespace-nowrap">
               <User className="mr-2 h-4 w-4" />

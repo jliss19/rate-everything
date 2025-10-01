@@ -43,7 +43,7 @@ export const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-3xl gap-2">
       <Select value={category} onValueChange={setCategory}>
-        <SelectTrigger className="w-[140px] bg-card border-border">
+        <SelectTrigger className="w-[110px] bg-card border-border">
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent className="bg-card border-border z-50">
