@@ -31,12 +31,23 @@ const popularCategories = [
 export const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const [customCategory, setCustomCategory] = useState("");
+  const [isCustomInputOpen, setIsCustomInputOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
       const searchQuery = category !== "All" ? `${category} ${query.trim()}` : query.trim();
       onSearch(searchQuery);
+    }
+  };
+
+  const handleCustomCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customCategory.trim()) {
+      setCategory(customCategory.trim());
+      setCustomCategory("");
+      setIsCustomInputOpen(false);
     }
   };
 
@@ -48,10 +59,35 @@ export const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
         </SelectTrigger>
         <SelectContent className="bg-card border-border z-50">
           {popularCategories.map((cat) => (
-            <SelectItem key={cat} value={cat}>
+            <SelectItem key={cat} value={cat} className="[&>span:last-child]:hidden">
               {cat}
             </SelectItem>
           ))}
+          <div className="border-t border-border mt-1 pt-2 px-2 pb-2">
+            {!isCustomInputOpen ? (
+              <button
+                type="button"
+                onClick={() => setIsCustomInputOpen(true)}
+                className="w-full text-left text-sm px-2 py-1.5 hover:bg-accent rounded-sm text-muted-foreground"
+              >
+                + Custom tag...
+              </button>
+            ) : (
+              <form onSubmit={handleCustomCategorySubmit} className="flex gap-1">
+                <Input
+                  type="text"
+                  placeholder="Enter custom tag"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="h-8 text-sm"
+                  autoFocus
+                />
+                <Button type="submit" size="sm" className="h-8 px-2">
+                  Add
+                </Button>
+              </form>
+            )}
+          </div>
         </SelectContent>
       </Select>
       
