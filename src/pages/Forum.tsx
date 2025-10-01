@@ -168,7 +168,7 @@ const Forum = () => {
   if (selectedPost) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="border-b border-border bg-card">
+        <header className="border-b border-border bg-card sticky top-0 z-50">
           <div className="container mx-auto px-6 py-4">
             <div className="flex items-center gap-4">
               <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap hover:opacity-80 transition-opacity">
@@ -181,91 +181,98 @@ const Forum = () => {
           </div>
         </header>
 
-        <main className="container mx-auto px-6 py-8 flex-1">
-          <Button
-            variant="ghost"
-            onClick={() => setSelectedPost(null)}
-            className="mb-6"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Forum
-          </Button>
+        <main className="flex-1 bg-muted/30">
+          <div className="max-w-3xl mx-auto px-4 py-8">
+            <Button
+              variant="ghost"
+              onClick={() => setSelectedPost(null)}
+              className="mb-6"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Forum
+            </Button>
 
-          <Card className="bg-card border-border mb-6">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-2xl mb-2">{selectedPost.title}</CardTitle>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span className="font-medium">{selectedPost.author}</span>
-                    <Badge variant="secondary">{selectedPost.category}</Badge>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>{selectedPost.timestamp}</span>
+            <Card className="bg-card border-border mb-6">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-2xl mb-2">{selectedPost.title}</CardTitle>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <span className="font-medium">u/{selectedPost.author}</span>
+                      <span>•</span>
+                      <Badge variant="secondary">{selectedPost.category}</Badge>
+                      <span>•</span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{selectedPost.timestamp}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
                   {selectedPost.isHot && (
                     <Badge variant="destructive">Hot</Badge>
                   )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-foreground whitespace-pre-wrap">{selectedPost.content}</p>
+                <Separator className="my-4" />
+                <div className="flex items-center gap-4">
                   <Button variant="ghost" size="sm">
-                    <ThumbsUp className="h-4 w-4 mr-1" />
-                    {selectedPost.likes}
+                    <ThumbsUp className="h-4 w-4 mr-2" />
+                    {selectedPost.likes} Upvotes
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    {selectedPost.replies.length} Comments
                   </Button>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-foreground">{selectedPost.content}</p>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mb-4 text-foreground">
-              {selectedPost.replies.length} Replies
-            </h3>
-            
+            <Card className="bg-card border-border mb-6">
+              <CardHeader>
+                <CardTitle className="text-base">Comment as u/CurrentUser</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="What are your thoughts?"
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
+                  className="mb-4"
+                  rows={4}
+                />
+                <Button onClick={handleReply}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Comment
+                </Button>
+              </CardContent>
+            </Card>
+
             <div className="space-y-4">
               {selectedPost.replies.map((reply) => (
                 <Card key={reply.id} className="bg-card border-border">
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span className="font-medium">{reply.author}</span>
-                        <span>•</span>
-                        <span>{reply.timestamp}</span>
+                    <div className="flex items-start gap-3">
+                      <div className="flex flex-col items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <ThumbsUp className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs font-medium">{reply.likes}</span>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <ThumbsUp className="h-3 w-3 mr-1" />
-                        {reply.likes}
-                      </Button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <span className="font-medium">u/{reply.author}</span>
+                          <span>•</span>
+                          <span>{reply.timestamp}</span>
+                        </div>
+                        <p className="text-foreground">{reply.content}</p>
+                      </div>
                     </div>
-                    <p className="text-foreground">{reply.content}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </div>
-
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Add a Reply</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Share your thoughts..."
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                className="mb-4"
-                rows={4}
-              />
-              <Button onClick={handleReply}>
-                <Send className="mr-2 h-4 w-4" />
-                Post Reply
-              </Button>
-            </CardContent>
-          </Card>
         </main>
 
         <Footer />
@@ -275,7 +282,7 @@ const Forum = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border bg-card">
+      <header className="border-b border-border bg-card sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap hover:opacity-80 transition-opacity">
@@ -288,100 +295,113 @@ const Forum = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 flex-1">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Community Forum</h1>
-            <p className="text-muted-foreground">Join the conversation and share your opinions</p>
-          </div>
-          
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Post
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-border">
-              <DialogHeader>
-                <DialogTitle>Create a New Post</DialogTitle>
-                <DialogDescription>
-                  Share your thoughts and start a discussion
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div>
-                  <Input
-                    placeholder="Post title"
-                    value={newPostTitle}
-                    onChange={(e) => setNewPostTitle(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Input
-                    placeholder="Category (e.g., Movies, Food, Tech)"
-                    value={newPostCategory}
-                    onChange={(e) => setNewPostCategory(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Textarea
-                    placeholder="What's on your mind?"
-                    value={newPostContent}
-                    onChange={(e) => setNewPostContent(e.target.value)}
-                    rows={6}
-                  />
-                </div>
-                <Button onClick={handleCreatePost} className="w-full">
+      <main className="flex-1 bg-muted/30">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">Community Forum</h1>
+              <p className="text-muted-foreground">Join the conversation and share your opinions</p>
+            </div>
+            
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
                   Create Post
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+              </DialogTrigger>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle>Create a New Post</DialogTitle>
+                  <DialogDescription>
+                    Share your thoughts and start a discussion
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Input
+                      placeholder="Post title"
+                      value={newPostTitle}
+                      onChange={(e) => setNewPostTitle(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Category (e.g., Movies, Food, Tech)"
+                      value={newPostCategory}
+                      onChange={(e) => setNewPostCategory(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Textarea
+                      placeholder="What's on your mind?"
+                      value={newPostContent}
+                      onChange={(e) => setNewPostContent(e.target.value)}
+                      rows={6}
+                    />
+                  </div>
+                  <Button onClick={handleCreatePost} className="w-full">
+                    Create Post
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-        <div className="grid gap-4 max-w-4xl">
-          {posts.map((post) => (
-            <Card
-              key={post.id}
-              className="bg-card border-border hover:border-primary transition-colors cursor-pointer"
-              onClick={() => setSelectedPost(post)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-xl font-semibold text-foreground hover:text-primary transition-colors">
+          <div className="space-y-3">
+            {posts.map((post) => (
+              <Card
+                key={post.id}
+                className="bg-card border-border hover:border-primary transition-colors cursor-pointer"
+                onClick={() => setSelectedPost(post)}
+              >
+                <CardContent className="p-0">
+                  <div className="flex gap-2">
+                    {/* Upvote section */}
+                    <div className="flex flex-col items-center bg-muted/50 p-2 rounded-l-lg">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:text-primary">
+                        <ThumbsUp className="h-4 w-4" />
+                      </Button>
+                      <span className="text-xs font-bold my-1">{post.likes}</span>
+                    </div>
+                    
+                    {/* Content section */}
+                    <div className="flex-1 p-4">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                        <Badge variant="secondary" className="text-xs">{post.category}</Badge>
+                        <span>•</span>
+                        <span>Posted by u/{post.author}</span>
+                        <span>•</span>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{post.timestamp}</span>
+                        </div>
+                        {post.isHot && (
+                          <>
+                            <span>•</span>
+                            <Badge variant="destructive" className="text-xs">Hot</Badge>
+                          </>
+                        )}
+                      </div>
+                      
+                      <h3 className="text-lg font-semibold text-foreground hover:text-primary transition-colors mb-2">
                         {post.title}
                       </h3>
-                      {post.isHot && (
-                        <Badge variant="destructive" className="text-xs">Hot</Badge>
-                      )}
-                    </div>
-                    <p className="text-muted-foreground mb-3 line-clamp-2">{post.content}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="font-medium">{post.author}</span>
-                      <Badge variant="secondary" className="text-xs">{post.category}</Badge>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-xs">{post.timestamp}</span>
+                      
+                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{post.content}</p>
+                      
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1 hover:bg-muted rounded px-2 py-1">
+                          <MessageCircle className="h-4 w-4" />
+                          <span>{post.replies.length} Comments</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-3 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <MessageCircle className="h-4 w-4" />
-                      <span>{post.replies.length}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <ThumbsUp className="h-4 w-4" />
-                      <span>{post.likes}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </main>
 
