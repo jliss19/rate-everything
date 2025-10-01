@@ -87,6 +87,12 @@ const Index = () => {
               <SearchBar onSearch={handleSearch} loading={isLoading} />
             </div>
             
+            <Link to="/forum">
+              <Button variant="outline" className="whitespace-nowrap">
+                Forum
+              </Button>
+            </Link>
+            
             <Button className="whitespace-nowrap">
               <User className="mr-2 h-4 w-4" />
               Sign In
