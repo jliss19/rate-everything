@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Users, Calendar, Globe } from "lucide-react";
 import { WikiItem } from "@/components/SearchResults";
 import { useToast } from "@/hooks/use-toast";
+import { addRating, getItemStats, getItemRatings, Rating } from "@/lib/database";
+import { getCurrentUser } from "@/lib/user";
 
 interface ItemDetailProps {
   item: WikiItem;
@@ -17,7 +19,34 @@ export const ItemDetail = ({ item, onBack }: ItemDetailProps) => {
   const [userRating, setUserRating] = useState(0);
   const [review, setReview] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [itemStats, setItemStats] = useState({ averageRating: 0, totalRatings: 0 });
+  const [recentRatings, setRecentRatings] = useState<Rating[]>([]);
   const { toast } = useToast();
+
+  // Load item statistics and recent ratings
+  useEffect(() => {
+    const loadItemData = async () => {
+      try {
+        const stats = await getItemStats(item.pageid.toString());
+        setItemStats({
+          averageRating: stats.averageRating,
+          totalRatings: stats.totalRatings
+        });
+      } catch (error) {
+        console.error('Error loading item stats:', error);
+      }
+    };
+
+    const unsubscribe = getItemRatings(item.pageid.toString(), (ratings) => {
+      setRecentRatings(ratings.slice(0, 5)); // Show last 5 ratings
+    });
+
+    loadItemData();
+
+    return () => {
+      unsubscribe();
+    };
+  }, [item.pageid]);
 
   const handleSubmitRating = async () => {
     if (userRating === 0) {
@@ -31,17 +60,45 @@ export const ItemDetail = ({ item, onBack }: ItemDetailProps) => {
 
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: "Rating submitted!",
-      description: `You rated "${item.title}" ${userRating} star${userRating === 1 ? '' : 's'}.`,
-    });
-    
-    setIsSubmitting(false);
-    setUserRating(0);
-    setReview("");
+    try {
+      const user = getCurrentUser();
+      console.log('🚀 Submitting rating for item:', item.title);
+      console.log('👤 User:', user);
+      console.log('⭐ Rating:', userRating);
+      console.log('📝 Review:', review);
+      
+      const ratingId = await addRating({
+        itemId: item.pageid.toString(),
+        rating: userRating,
+        review: review.trim() || undefined,
+        userId: user.id,
+      }, {
+        pageid: item.pageid,
+        title: item.title,
+        description: item.description,
+        extract: item.extract,
+        thumbnail: item.thumbnail,
+      });
+      
+      console.log('✅ Rating submitted successfully! ID:', ratingId);
+      
+      toast({
+        title: "Rating submitted!",
+        description: `You rated "${item.title}" ${userRating} star${userRating === 1 ? '' : 's'}.`,
+      });
+      
+      setUserRating(0);
+      setReview("");
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit rating. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -71,10 +128,10 @@ export const ItemDetail = ({ item, onBack }: ItemDetailProps) => {
                   <h1 className="text-3xl font-bold mb-2 text-card-foreground">{item.title}</h1>
                   <p className="text-muted-foreground mb-4">{item.description}</p>
                   <div className="flex items-center gap-4">
-                    <RatingStars rating={item.rating || 0} readonly />
+                    <RatingStars rating={itemStats.averageRating} readonly />
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Users className="h-4 w-4" />
-                      {item.totalRatings || 0} ratings
+                      {itemStats.totalRatings} ratings
                     </div>
                   </div>
                 </div>
@@ -143,10 +200,26 @@ export const ItemDetail = ({ item, onBack }: ItemDetailProps) => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 text-sm">
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No reviews yet.</p>
-                  <p>Be the first to review this item!</p>
-                </div>
+                {recentRatings.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No reviews yet.</p>
+                    <p>Be the first to review this item!</p>
+                  </div>
+                ) : (
+                  recentRatings.map((rating) => (
+                    <div key={rating.id} className="border-b border-border pb-3 last:border-b-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <RatingStars rating={rating.rating} readonly size="sm" />
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(rating.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {rating.review && (
+                        <p className="text-muted-foreground">{rating.review}</p>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

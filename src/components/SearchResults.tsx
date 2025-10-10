@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RatingStars } from "@/components/RatingStars";
 import { Eye, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getItemStats, ItemStats } from "@/lib/database";
 
 export interface WikiItem {
   title: string;
@@ -11,6 +13,7 @@ export interface WikiItem {
   pageid: number;
   rating?: number;
   totalRatings?: number;
+  stats?: ItemStats;
 }
 
 interface SearchResultsProps {
@@ -19,6 +22,35 @@ interface SearchResultsProps {
 }
 
 export const SearchResults = ({ results, onItemSelect }: SearchResultsProps) => {
+  const [itemStats, setItemStats] = useState<{ [key: string]: ItemStats }>({});
+
+  // Load statistics for all items
+  useEffect(() => {
+    const loadStats = async () => {
+      const statsPromises = results.map(async (item) => {
+        try {
+          const stats = await getItemStats(item.pageid.toString());
+          return { pageid: item.pageid, stats };
+        } catch (error) {
+          console.error('Error loading stats for item:', item.pageid, error);
+          return { pageid: item.pageid, stats: { averageRating: 0, totalRatings: 0, ratings: {} } };
+        }
+      });
+
+      const statsResults = await Promise.all(statsPromises);
+      const statsMap = statsResults.reduce((acc, { pageid, stats }) => {
+        acc[pageid] = stats;
+        return acc;
+      }, {} as { [key: string]: ItemStats });
+
+      setItemStats(statsMap);
+    };
+
+    if (results.length > 0) {
+      loadStats();
+    }
+  }, [results]);
+
   if (results.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -51,15 +83,19 @@ export const SearchResults = ({ results, onItemSelect }: SearchResultsProps) => 
             </p>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <RatingStars rating={item.rating || 0} readonly size="sm" />
+                <RatingStars 
+                  rating={itemStats[item.pageid]?.averageRating || 0} 
+                  readonly 
+                  size="sm" 
+                />
               </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                {item.totalRatings && (
+                {itemStats[item.pageid]?.totalRatings ? (
                   <div className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
-                    {item.totalRatings}
+                    {itemStats[item.pageid].totalRatings}
                   </div>
-                )}
+                ) : null}
                 <Eye className="h-3 w-3" />
               </div>
             </div>
