@@ -7,8 +7,11 @@ import { TopRankings } from "@/components/TopRankings";
 import { ReviewsList } from "@/components/ReviewsList";
 import { ForumsList } from "@/components/ForumsList";
 import { Footer } from "@/components/Footer";
+import { AuthModal } from "@/components/AuthModal";
 import { searchWikipedia } from "@/lib/wikimedia";
-import { TrendingUp, Star, Menu, User } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { convertFirebaseUser } from "@/lib/user";
+import { TrendingUp, Star, Menu, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,12 +19,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Index = () => {
   const [searchResults, setSearchResults] = useState<WikiItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<WikiItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  
+  const { user, logout } = useAuth();
 
   const handleSearch = async (query: string) => {
     setIsLoading(true);
@@ -46,6 +53,16 @@ const Index = () => {
   const handleBack = () => {
     setSelectedItem(null);
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  const currentUser = user ? convertFirebaseUser(user) : null;
 
   if (selectedItem) {
     return (
@@ -93,10 +110,42 @@ const Index = () => {
               </Button>
             </Link>
             
-            <Button className="whitespace-nowrap">
-              <User className="mr-2 h-4 w-4" />
-              Sign In
-            </Button>
+            {currentUser ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={currentUser.photoURL} />
+                      <AvatarFallback className="text-xs">
+                        {currentUser.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden sm:inline">{currentUser.name}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card border-border z-50 w-56">
+                  <DropdownMenuItem className="cursor-pointer hover:bg-accent">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="cursor-pointer hover:bg-accent text-red-600"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                className="whitespace-nowrap"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                <User className="mr-2 h-4 w-4" />
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -138,6 +187,11 @@ const Index = () => {
       </main>
       
       <Footer />
+      
+      <AuthModal 
+        open={authModalOpen} 
+        onOpenChange={setAuthModalOpen} 
+      />
     </div>
   );
 };

@@ -8,7 +8,8 @@ import { ArrowLeft, Users, Calendar, Globe } from "lucide-react";
 import { WikiItem } from "@/components/SearchResults";
 import { useToast } from "@/hooks/use-toast";
 import { addRating, getItemStats, getItemRatings, Rating } from "@/lib/database";
-import { getCurrentUser } from "@/lib/user";
+import { useAuth } from "@/lib/auth";
+import { convertFirebaseUser, getAnonymousUser } from "@/lib/user";
 
 interface ItemDetailProps {
   item: WikiItem;
@@ -22,6 +23,7 @@ export const ItemDetail = ({ item, onBack }: ItemDetailProps) => {
   const [itemStats, setItemStats] = useState({ averageRating: 0, totalRatings: 0 });
   const [recentRatings, setRecentRatings] = useState<Rating[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Load item statistics and recent ratings
   useEffect(() => {
@@ -61,9 +63,10 @@ export const ItemDetail = ({ item, onBack }: ItemDetailProps) => {
     setIsSubmitting(true);
     
     try {
-      const user = getCurrentUser();
+      // Get current user - either Firebase user or anonymous fallback
+      const currentUser = user ? convertFirebaseUser(user) : getAnonymousUser();
       console.log('🚀 Submitting rating for item:', item.title);
-      console.log('👤 User:', user);
+      console.log('👤 User:', currentUser);
       console.log('⭐ Rating:', userRating);
       console.log('📝 Review:', review);
       
@@ -71,7 +74,7 @@ export const ItemDetail = ({ item, onBack }: ItemDetailProps) => {
         itemId: item.pageid.toString(),
         rating: userRating,
         review: review.trim() || undefined,
-        userId: user.id,
+        userId: currentUser.id,
       }, {
         pageid: item.pageid,
         title: item.title,
