@@ -1,10 +1,21 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { SearchBar } from "@/components/SearchBar";
 import { SearchResults, WikiItem } from "@/components/SearchResults";
 import { ItemDetail } from "@/components/ItemDetail";
+import { TopRankings } from "@/components/TopRankings";
+import { ReviewsList } from "@/components/ReviewsList";
+import { ForumsList } from "@/components/ForumsList";
+import { Footer } from "@/components/Footer";
 import { searchWikipedia } from "@/lib/wikimedia";
-import { Star, TrendingUp, Users, Zap } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { TrendingUp, Star, Menu, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Index = () => {
   const [searchResults, setSearchResults] = useState<WikiItem[]>([]);
@@ -45,74 +56,68 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-6 py-6">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center gap-4">
+            <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap hover:opacity-80 transition-opacity">
               RateEverything
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Rate anything in the universe. Movies, books, places, people, objects, concepts – if it exists, you can rate it.
-            </p>
-          </div>
-          
-          <div className="flex justify-center">
-            <SearchBar onSearch={handleSearch} loading={isLoading} />
+            </Link>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="bg-card border-border">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card border-border z-50 w-56">
+                <DropdownMenuItem className="cursor-pointer hover:bg-accent">
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  Top 100 Most Rated
+                </DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer hover:bg-accent">
+                  <Star className="mr-2 h-4 w-4" />
+                  Top 100 Highest Rated
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <div className="flex-1">
+              <SearchBar onSearch={handleSearch} loading={isLoading} />
+            </div>
+            
+            <Link to="/forum">
+              <Button variant="outline" className="whitespace-nowrap">
+                Forum
+              </Button>
+            </Link>
+            
+            <Button className="whitespace-nowrap">
+              <User className="mr-2 h-4 w-4" />
+              Sign In
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-6 py-8 flex-1">
         {!hasSearched ? (
-          <div className="max-w-4xl mx-auto">
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-6 mb-12">
-              <Card className="bg-card border-border">
-                <CardContent className="p-6 text-center">
-                  <Star className="h-12 w-12 mx-auto mb-4 text-primary" />
-                  <h3 className="text-lg font-semibold mb-2 text-card-foreground">Universal Rating</h3>
-                  <p className="text-muted-foreground">Rate literally anything that exists in our universe with our 5-star system.</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-card border-border">
-                <CardContent className="p-6 text-center">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-accent" />
-                  <h3 className="text-lg font-semibold mb-2 text-card-foreground">Community Driven</h3>
-                  <p className="text-muted-foreground">Join millions of users sharing their opinions and discovering new things to rate.</p>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-card border-border">
-                <CardContent className="p-6 text-center">
-                  <Zap className="h-12 w-12 mx-auto mb-4 text-rating-gold" />
-                  <h3 className="text-lg font-semibold mb-2 text-card-foreground">Instant Discovery</h3>
-                  <p className="text-muted-foreground">Powered by Wikipedia's vast database for instant information and images.</p>
-                </CardContent>
-              </Card>
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left Column - Top Rankings */}
+            <div className="lg:col-span-1">
+              <TopRankings />
             </div>
-
-            {/* Popular Categories */}
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold mb-6 text-foreground">Popular to Rate</h2>
-              <div className="flex flex-wrap justify-center gap-3">
-                {[
-                  "Marvel Movies", "Pizza Places", "Programming Languages", "Dog Breeds",
-                  "Video Games", "Coffee Shops", "Books", "Celebrities", "Countries",
-                  "Inventions", "Art Pieces", "Music Albums", "Restaurants", "Technologies"
-                ].map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => handleSearch(category)}
-                    className="px-4 py-2 bg-secondary text-secondary-foreground rounded-full hover:bg-accent hover:text-accent-foreground transition-colors text-sm"
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
+            
+            {/* Middle Column - Recent Reviews */}
+            <div className="lg:col-span-1">
+              <ReviewsList />
+            </div>
+            
+            {/* Right Column - Active Forums */}
+            <div className="lg:col-span-1">
+              <ForumsList />
             </div>
           </div>
         ) : (
@@ -131,6 +136,8 @@ const Index = () => {
           </div>
         )}
       </main>
+      
+      <Footer />
     </div>
   );
 };
