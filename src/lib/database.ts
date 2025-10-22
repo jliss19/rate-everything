@@ -20,6 +20,8 @@ export interface Rating {
   review?: string;
   userId: string;
   timestamp: number;
+  userName?: string; // Store user name for display
+  userEmail?: string; // Store user email for identification
 }
 
 export interface DatabaseItem {
@@ -28,7 +30,7 @@ export interface DatabaseItem {
   title: string;
   description: string;
   extract: string;
-  thumbnail?: string;
+  thumbnail?: string; // Optional - may not be present for all items
   createdAt: number;
   updatedAt: number;
 }
@@ -38,6 +40,17 @@ export interface ItemStats {
   totalRatings: number;
   ratings: { [key: string]: Rating };
 }
+
+// Utility function to remove undefined values from objects (Firebase doesn't allow undefined)
+const removeUndefinedValues = (obj: any): any => {
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+};
   
   // Create or update an item in the database
   export const createOrUpdateItem = async (item: {
@@ -65,7 +78,7 @@ export interface ItemStats {
         thumbnail: item.thumbnail,
         updatedAt: Date.now()
       };
-      await set(itemRef, updatedItem);
+      await set(itemRef, removeUndefinedValues(updatedItem));
       console.log('✅ Item updated successfully!');
       return existingItem.id;
     } else {
@@ -82,7 +95,7 @@ export interface ItemStats {
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
-      await set(newItemRef, newItem);
+      await set(newItemRef, removeUndefinedValues(newItem));
       console.log('✅ New item created successfully! ID:', newItemRef.key);
       return newItemRef.key!;
     }
@@ -101,29 +114,100 @@ export interface ItemStats {
     return null;
   };
 
-  // Add a new rating (now creates/updates item first)
-  export const addRating = async (rating: Omit<Rating, 'id' | 'timestamp'>, item: {
-    pageid: number;
-    title: string;
-    description: string;
-    extract: string;
-    thumbnail?: string;
-  }): Promise<string> => {
-    // First, ensure the item exists in the database
-    const itemId = await createOrUpdateItem(item);
-    
-    // Then add the rating
+  // Validate rating data
+  const validateRating = (rating: Omit<Rating, 'id' | 'timestamp'>): void => {
+    if (!rating.itemId || typeof rating.itemId !== 'string') {
+      throw new Error('Item ID is required and must be a string');
+    }
+    if (!rating.userId || typeof rating.userId !== 'string') {
+      throw new Error('User ID is required and must be a string');
+    }
+    if (!rating.rating || typeof rating.rating !== 'number' || rating.rating < 1 || rating.rating > 5) {
+      throw new Error('Rating must be a number between 1 and 5');
+    }
+    if (rating.review && typeof rating.review !== 'string') {
+      throw new Error('Review must be a string if provided');
+    }
+    if (rating.review && rating.review.length > 1000) {
+      throw new Error('Review must be 1000 characters or less');
+    }
+  };
+
+  // Check if user has already rated this item
+  export const getUserRatingForItem = async (itemId: string, userId: string): Promise<Rating | null> => {
     const ratingsRef = ref(database, 'ratings');
-    const newRatingRef = push(ratingsRef);
+    const userRatingsQuery = query(
+      ratingsRef, 
+      orderByChild('itemId'), 
+      equalTo(itemId)
+    );
     
-    const ratingData: Rating = {
-      ...rating,
-      id: newRatingRef.key!,
-      timestamp: Date.now()
-    };
-    
-    await set(newRatingRef, ratingData);
-    return newRatingRef.key!;
+    const snapshot = await get(userRatingsQuery);
+    if (snapshot.exists()) {
+      const ratings = snapshot.val();
+      for (const ratingId in ratings) {
+        if (ratings[ratingId].userId === userId) {
+          return { ...ratings[ratingId], id: ratingId };
+        }
+      }
+    }
+    return null;
+  };
+
+  // Add a new rating (now creates/updates item first)
+  export const addRating = async (
+    rating: Omit<Rating, 'id' | 'timestamp'>, 
+    item: {
+      pageid: number;
+      title: string;
+      description: string;
+      extract: string;
+      thumbnail?: string;
+    },
+    userInfo?: {
+      name?: string;
+      email?: string;
+    }
+  ): Promise<string> => {
+    try {
+      // Validate rating data
+      validateRating(rating);
+      
+      // Check if user has already rated this item
+      const existingRating = await getUserRatingForItem(rating.itemId, rating.userId);
+      if (existingRating) {
+        throw new Error('You have already rated this item. Use updateRating to modify your rating.');
+      }
+      
+      // First, ensure the item exists in the database
+      const itemId = await createOrUpdateItem(item);
+      
+      // Then add the rating
+      const ratingsRef = ref(database, 'ratings');
+      const newRatingRef = push(ratingsRef);
+      
+      const ratingData: any = {
+        itemId: rating.itemId,
+        rating: rating.rating,
+        userId: rating.userId,
+        id: newRatingRef.key!,
+        timestamp: Date.now(),
+        userName: userInfo?.name,
+        userEmail: userInfo?.email
+      };
+      
+      // Only include review if it's not undefined
+      if (rating.review !== undefined) {
+        ratingData.review = rating.review;
+      }
+      
+      await set(newRatingRef, removeUndefinedValues(ratingData));
+      console.log('✅ Rating added successfully:', newRatingRef.key);
+      return newRatingRef.key!;
+    } catch (error) {
+      console.error('❌ Error adding rating:', error);
+      throw error;
+    }
   };
   
   // Get all ratings for a specific item
@@ -170,15 +254,78 @@ export interface ItemStats {
   };
   
   // Update a rating
-  export const updateRating = async (ratingId: string, updates: Partial<Rating>): Promise<void> => {
-    const ratingRef = ref(database, `ratings/${ratingId}`);
-    await update(ratingRef, updates);
+  export const updateRating = async (
+    ratingId: string, 
+    updates: Partial<Omit<Rating, 'id' | 'userId' | 'itemId'>>,
+    userId: string
+  ): Promise<void> => {
+    try {
+      // First, verify the rating exists and belongs to the user
+      const ratingRef = ref(database, `ratings/${ratingId}`);
+      const snapshot = await get(ratingRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Rating not found');
+      }
+      
+      const existingRating = snapshot.val() as Rating;
+      if (existingRating.userId !== userId) {
+        throw new Error('You can only update your own ratings');
+      }
+      
+      // Validate rating if it's being updated
+      if (updates.rating !== undefined) {
+        if (typeof updates.rating !== 'number' || updates.rating < 1 || updates.rating > 5) {
+          throw new Error('Rating must be a number between 1 and 5');
+        }
+      }
+      
+      // Validate review if it's being updated
+      if (updates.review !== undefined) {
+        if (updates.review && typeof updates.review !== 'string') {
+          throw new Error('Review must be a string if provided');
+        }
+        if (updates.review && updates.review.length > 1000) {
+          throw new Error('Review must be 1000 characters or less');
+        }
+      }
+      
+      // Add timestamp for the update
+      const updateData = {
+        ...updates,
+        timestamp: Date.now()
+      };
+      
+      await update(ratingRef, removeUndefinedValues(updateData));
+      console.log('✅ Rating updated successfully:', ratingId);
+    } catch (error) {
+      console.error('❌ Error updating rating:', error);
+      throw error;
+    }
   };
   
   // Delete a rating
-  export const deleteRating = async (ratingId: string): Promise<void> => {
-    const ratingRef = ref(database, `ratings/${ratingId}`);
-    await remove(ratingRef);
+  export const deleteRating = async (ratingId: string, userId: string): Promise<void> => {
+    try {
+      // First, verify the rating exists and belongs to the user
+      const ratingRef = ref(database, `ratings/${ratingId}`);
+      const snapshot = await get(ratingRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Rating not found');
+      }
+      
+      const existingRating = snapshot.val() as Rating;
+      if (existingRating.userId !== userId) {
+        throw new Error('You can only delete your own ratings');
+      }
+      
+      await remove(ratingRef);
+      console.log('✅ Rating deleted successfully:', ratingId);
+    } catch (error) {
+      console.error('❌ Error deleting rating:', error);
+      throw error;
+    }
   };
   
   // Get recent ratings (for homepage)
@@ -224,4 +371,93 @@ export interface ItemStats {
       })
     );
     return itemsWithStats;
+  };
+
+  // Get all ratings by a specific user
+  export const getUserRatings = async (userId: string): Promise<Rating[]> => {
+    const ratingsRef = ref(database, 'ratings');
+    const userRatingsQuery = query(ratingsRef, orderByChild('userId'), equalTo(userId));
+    
+    const snapshot = await get(userRatingsQuery);
+    const ratings: Rating[] = [];
+    
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        ratings.push({ ...childSnapshot.val(), id: childSnapshot.key });
+      });
+    }
+    
+    return ratings.sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+  };
+
+  // Get top-rated items (items with highest average ratings)
+  export const getTopRatedItems = async (limit: number = 10): Promise<(DatabaseItem & { stats: ItemStats })[]> => {
+    const itemsWithStats = await getItemsWithStats();
+    
+    // Filter items with at least 1 rating and sort by average rating
+    const topRatedItems = itemsWithStats
+      .filter(item => item.stats.totalRatings > 0)
+      .sort((a, b) => b.stats.averageRating - a.stats.averageRating)
+      .slice(0, limit);
+    
+    return topRatedItems;
+  };
+
+  // Get most-reviewed items (items with most ratings)
+  export const getMostReviewedItems = async (limit: number = 10): Promise<(DatabaseItem & { stats: ItemStats })[]> => {
+    const itemsWithStats = await getItemsWithStats();
+    
+    // Sort by total ratings count
+    const mostReviewedItems = itemsWithStats
+      .filter(item => item.stats.totalRatings > 0)
+      .sort((a, b) => b.stats.totalRatings - a.stats.totalRatings)
+      .slice(0, limit);
+    
+    return mostReviewedItems;
+  };
+
+  // Add or update rating (convenience function that handles both cases)
+  export const addOrUpdateRating = async (
+    rating: Omit<Rating, 'id' | 'timestamp'>,
+    item: {
+      pageid: number;
+      title: string;
+      description: string;
+      extract: string;
+      thumbnail?: string;
+    },
+    userInfo?: {
+      name?: string;
+      email?: string;
+    }
+  ): Promise<{ ratingId: string; isUpdate: boolean }> => {
+    try {
+      // Check if user has already rated this item
+      const existingRating = await getUserRatingForItem(rating.itemId, rating.userId);
+      
+      if (existingRating) {
+        // Update existing rating
+        const updateData: Partial<Omit<Rating, 'id' | 'userId' | 'itemId'>> = {
+          rating: rating.rating,
+          userName: userInfo?.name,
+          userEmail: userInfo?.email
+        };
+        
+        // Only include review if it's not undefined
+        if (rating.review !== undefined) {
+          updateData.review = rating.review;
+        }
+        
+        await updateRating(existingRating.id!, updateData, rating.userId);
+        
+        return { ratingId: existingRating.id!, isUpdate: true };
+      } else {
+        // Add new rating
+        const ratingId = await addRating(rating, item, userInfo);
+        return { ratingId, isUpdate: false };
+      }
+    } catch (error) {
+      console.error('❌ Error adding or updating rating:', error);
+      throw error;
+    }
   };
