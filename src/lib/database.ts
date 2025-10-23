@@ -229,6 +229,10 @@ const removeUndefinedValues = (obj: any): any => {
   // Get item statistics (average rating, total count)
   export const getItemStats = async (itemId: string): Promise<ItemStats> => {
     const ratingsRef = ref(database, 'ratings');
+    if (!itemId) {
+      console.warn("getItemStats called with invalid itemId:", itemId);
+      return { averageRating: 0, totalRatings: 0, ratings: {} };
+    }
     const itemRatingsQuery = query(ratingsRef, orderByChild('itemId'), equalTo(itemId));
     
     const snapshot = await get(itemRatingsQuery);
