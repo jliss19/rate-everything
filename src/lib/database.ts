@@ -229,10 +229,11 @@ const removeUndefinedValues = (obj: any): any => {
   // Get item statistics (average rating, total count)
   export const getItemStats = async (itemId: string): Promise<ItemStats> => {
     const ratingsRef = ref(database, 'ratings');
+    /*
     if (!itemId) {
       console.warn("getItemStats called with invalid itemId:", itemId);
       return { averageRating: 0, totalRatings: 0, ratings: {} };
-    }
+    */
     const itemRatingsQuery = query(ratingsRef, orderByChild('itemId'), equalTo(itemId));
     
     const snapshot = await get(itemRatingsQuery);
@@ -246,7 +247,6 @@ const removeUndefinedValues = (obj: any): any => {
     const averageRating = totalRatings > 0 
       ? ratings.reduce((sum, rating) => sum + rating.rating, 0) / totalRatings 
       : 0;
-    
     return {
       averageRating,
       totalRatings,
@@ -370,7 +370,7 @@ const removeUndefinedValues = (obj: any): any => {
     const items = await getAllItems();
     const itemsWithStats = await Promise.all(
       items.map(async (item) => {
-        const stats = await getItemStats(item.id);
+        const stats = await getItemStats(item.pageid.toString());
         return { ...item, stats };
       })
     );
@@ -397,13 +397,12 @@ const removeUndefinedValues = (obj: any): any => {
   // Get top-rated items (items with highest average ratings)
   export const getTopRatedItems = async (limit: number = 10): Promise<(DatabaseItem & { stats: ItemStats })[]> => {
     const itemsWithStats = await getItemsWithStats();
-    
+    //console.log(itemsWithStats);
     // Filter items with at least 1 rating and sort by average rating
     const topRatedItems = itemsWithStats
       .filter(item => item.stats.totalRatings > 0)
       .sort((a, b) => b.stats.averageRating - a.stats.averageRating)
       .slice(0, limit);
-    
     return topRatedItems;
   };
 
