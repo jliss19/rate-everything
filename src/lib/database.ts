@@ -46,6 +46,7 @@ export interface ForumPost {
   userid: string;
   likes: number;
   parentid: string;
+  isReply: boolean
   replies: ForumPost[];
 }
 
@@ -82,6 +83,7 @@ const removeUndefinedValues = (obj: any): any => {
     const itemsRef = ref(database, 'forums');
     const itemQuery = query(itemsRef, orderByChild('pageid'), equalTo(forumPost.id));
     const snapshot = await get(itemQuery);
+    let temp;
     if (snapshot.exists()) {
       const existingPost = Object.values(snapshot.val())[0] as ForumPost;
       const itemRef = ref(database, `forums/${existingPost.id}`);
@@ -96,6 +98,9 @@ const removeUndefinedValues = (obj: any): any => {
       return existingPost.id;
     } else {
       const newItemRef = push(itemsRef);
+      if (forumPost.parentid) {
+        temp = true;
+      } else { temp = false; }
       const newPost: ForumPost = {
         id: newItemRef.key!,
         itemid: forumPost.itemid,
@@ -107,6 +112,7 @@ const removeUndefinedValues = (obj: any): any => {
         userName: userInfo?.name,
         userid: userInfo?.id,
         parentid: forumPost.parentid,
+        isReply: temp,
         replies: null
       };
       await set(newItemRef, removeUndefinedValues(newPost));
