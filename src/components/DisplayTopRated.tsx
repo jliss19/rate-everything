@@ -1,7 +1,7 @@
 import { RatingStars } from "@/components/RatingStars";
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState } from "react";
-import { DatabaseItem, ItemStats, getTopRatedItems } from "@/lib/database";
+import { getTopRatedItems } from "@/lib/database";
 
 
 export const DisplayTopRated = () => {

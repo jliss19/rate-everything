@@ -45,6 +45,8 @@ export interface ForumPost {
   userName: string;
   userid: string;
   likes: number;
+  parentid: string;
+  replies: ForumPost[];
 }
 
 export interface ItemStats {
@@ -52,6 +54,8 @@ export interface ItemStats {
   totalRatings: number;
   ratings: { [key: string]: Rating };
 }
+
+
 
 // Utility function to remove undefined values from objects (Firebase doesn't allow undefined)
 const removeUndefinedValues = (obj: any): any => {
@@ -70,16 +74,17 @@ const removeUndefinedValues = (obj: any): any => {
     title: string;
     likes?: number;
     review: string;
+    parentid?: string;
   }, userInfo?: {
       name?: string;
       id?: string;
   }): Promise<string> => {
-    const itemsRef = ref(database, 'posts');
+    const itemsRef = ref(database, 'forums');
     const itemQuery = query(itemsRef, orderByChild('pageid'), equalTo(forumPost.id));
     const snapshot = await get(itemQuery);
     if (snapshot.exists()) {
       const existingPost = Object.values(snapshot.val())[0] as ForumPost;
-      const itemRef = ref(database, `posts/${existingPost.id}`);
+      const itemRef = ref(database, `forums/${existingPost.id}`);
       const updatedPost: ForumPost = {
         ...existingPost,
         title: forumPost.title,
@@ -100,7 +105,9 @@ const removeUndefinedValues = (obj: any): any => {
         updatedAt: Date.now(),
         likes: 0,
         userName: userInfo?.name,
-        userid: userInfo?.id
+        userid: userInfo?.id,
+        parentid: forumPost.parentid,
+        replies: null
       };
       await set(newItemRef, removeUndefinedValues(newPost));
       return newItemRef.key!;
@@ -416,6 +423,16 @@ const removeUndefinedValues = (obj: any): any => {
     
     if (snapshot.exists()) {
       return Object.values(snapshot.val()) as DatabaseItem[];
+    }
+    return [];
+  };
+
+  export const getAllForumsForTag = async (tag: string): Promise<ForumPost[]> => {
+    const itemsRef = ref(database, `forums/${tag}`);
+    const snapshot = await get(itemsRef);
+
+    if (snapshot.exists()) {
+      return Object.values(snapshot.val()) as ForumPost[];
     }
     return [];
   };
