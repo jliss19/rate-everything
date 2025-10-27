@@ -35,6 +35,18 @@ export interface DatabaseItem {
   updatedAt: number;
 }
 
+export interface ForumPost {
+  id?: string;
+  itemid: string;
+  title: string;
+  review?: string;
+  createdAt: number;
+  updatedAt: number;
+  userName: string;
+  userid: string;
+  likes: number;
+}
+
 export interface ItemStats {
   averageRating: number;
   totalRatings: number;
@@ -52,6 +64,49 @@ const removeUndefinedValues = (obj: any): any => {
   return cleaned;
 };
   
+  export const createOrUpdateForumPost = async (forumPost: {
+    id: string;
+    itemid: string;
+    title: string;
+    likes?: number;
+    review: string;
+  }, userInfo?: {
+      name?: string;
+      id?: string;
+  }): Promise<string> => {
+    const itemsRef = ref(database, 'posts');
+    const itemQuery = query(itemsRef, orderByChild('pageid'), equalTo(forumPost.id));
+    const snapshot = await get(itemQuery);
+    if (snapshot.exists()) {
+      const existingPost = Object.values(snapshot.val())[0] as ForumPost;
+      const itemRef = ref(database, `posts/${existingPost.id}`);
+      const updatedPost: ForumPost = {
+        ...existingPost,
+        title: forumPost.title,
+        review: forumPost.review,
+        updatedAt: Date.now(),
+        likes: forumPost.likes,
+      };
+      await set(itemRef, removeUndefinedValues(updatedPost));
+      return existingPost.id;
+    } else {
+      const newItemRef = push(itemsRef);
+      const newPost: ForumPost = {
+        id: newItemRef.key!,
+        itemid: forumPost.itemid,
+        title: forumPost.title,
+        review: forumPost.review,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        likes: 0,
+        userName: userInfo?.name,
+        userid: userInfo?.id
+      };
+      await set(newItemRef, removeUndefinedValues(newPost));
+      return newItemRef.key!;
+    }
+  }
+
   // Create or update an item in the database
   export const createOrUpdateItem = async (item: {
     pageid: number;
@@ -418,7 +473,6 @@ const removeUndefinedValues = (obj: any): any => {
     
     return mostReviewedItems;
   };
-
   // Add or update rating (convenience function that handles both cases)
   export const addOrUpdateRating = async (
     rating: Omit<Rating, 'id' | 'timestamp'>,
