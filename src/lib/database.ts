@@ -393,6 +393,28 @@ const removeUndefinedValues = (obj: any): any => {
       throw error;
     }
   };
+
+  export const deleteForumPost = async (postid: string, userid: string): Promise<void> => {
+    try {
+      const ratingRef = ref(database, `forums/${postid}`);
+      const snapshot = await get(ratingRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Rating not found');
+      }
+      
+      const existingPost = snapshot.val() as ForumPost;
+      if (existingPost.userid !== userid) {
+        throw new Error('You can only delete your own ratings');
+      }
+      
+      await remove(ratingRef);
+      console.log('Rating deleted successfully:', postid);
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      throw error;
+    }
+  }
   
   // Get recent ratings (for homepage)
   export const getRecentRatings = (limit: number = 10, callback: (ratings: Rating[]) => void) => {
