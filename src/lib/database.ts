@@ -461,3 +461,279 @@ const removeUndefinedValues = (obj: any): any => {
       throw error;
     }
   };
+
+  // ========== FORUM POSTS ==========
+  
+  export interface ForumPost {
+    id?: string;
+    title: string;
+    content: string;
+    category: string;
+    authorId: string;
+    authorName: string;
+    timestamp: number;
+    likes: number;
+    likedBy?: { [userId: string]: boolean };
+    replyCount?: number;
+  }
+
+  export interface ForumComment {
+    id?: string;
+    postId: string;
+    content: string;
+    authorId: string;
+    authorName: string;
+    timestamp: number;
+    likes: number;
+    likedBy?: { [userId: string]: boolean };
+  }
+
+  // Create a new forum post
+  export const createForumPost = async (
+    post: Omit<ForumPost, 'id' | 'timestamp' | 'likes' | 'replyCount'>
+  ): Promise<string> => {
+    try {
+      if (!post.title.trim() || !post.content.trim() || !post.category.trim()) {
+        throw new Error('Title, content, and category are required');
+      }
+
+      const postsRef = ref(database, 'forumPosts');
+      const newPostRef = push(postsRef);
+      
+      const postData: ForumPost = {
+        ...post,
+        id: newPostRef.key!,
+        timestamp: Date.now(),
+        likes: 0,
+        replyCount: 0,
+        likedBy: {}
+      };
+      
+      await set(newPostRef, removeUndefinedValues(postData));
+      console.log('✅ Forum post created successfully:', newPostRef.key);
+      return newPostRef.key!;
+    } catch (error) {
+      console.error('❌ Error creating forum post:', error);
+      throw error;
+    }
+  };
+
+  // Get all forum posts
+  export const getForumPosts = (callback: (posts: ForumPost[]) => void) => {
+    const postsRef = ref(database, 'forumPosts');
+    const postsQuery = query(postsRef, orderByChild('timestamp'));
+    
+    const unsubscribe = onValue(postsQuery, (snapshot) => {
+      const posts: ForumPost[] = [];
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          posts.push({ ...childSnapshot.val(), id: childSnapshot.key });
+        });
+      }
+      // Sort by timestamp descending (newest first)
+      const sortedPosts = posts.sort((a, b) => b.timestamp - a.timestamp);
+      callback(sortedPosts);
+    });
+    
+    return unsubscribe;
+  };
+
+  // Get a single forum post by ID
+  export const getForumPostById = async (postId: string): Promise<ForumPost | null> => {
+    try {
+      const postRef = ref(database, `forumPosts/${postId}`);
+      const snapshot = await get(postRef);
+      
+      if (snapshot.exists()) {
+        return { ...snapshot.val(), id: postId };
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Error getting forum post:', error);
+      throw error;
+    }
+  };
+
+  // Like/unlike a forum post
+  export const togglePostLike = async (postId: string, userId: string): Promise<boolean> => {
+    try {
+      const postRef = ref(database, `forumPosts/${postId}`);
+      const snapshot = await get(postRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Post not found');
+      }
+      
+      const post = snapshot.val() as ForumPost;
+      const likedBy = post.likedBy || {};
+      const isLiked = likedBy[userId] === true;
+      
+      if (isLiked) {
+        // Unlike
+        delete likedBy[userId];
+        await update(postRef, {
+          likes: Math.max(0, (post.likes || 0) - 1),
+          likedBy
+        });
+        return false;
+      } else {
+        // Like
+        likedBy[userId] = true;
+        await update(postRef, {
+          likes: (post.likes || 0) + 1,
+          likedBy
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error('❌ Error toggling post like:', error);
+      throw error;
+    }
+  };
+
+  // ========== FORUM COMMENTS ==========
+
+  // Create a new forum comment
+  export const createForumComment = async (
+    comment: Omit<ForumComment, 'id' | 'timestamp' | 'likes'>
+  ): Promise<string> => {
+    try {
+      if (!comment.content.trim()) {
+        throw new Error('Comment content is required');
+      }
+
+      // Verify post exists
+      const postRef = ref(database, `forumPosts/${comment.postId}`);
+      const postSnapshot = await get(postRef);
+      
+      if (!postSnapshot.exists()) {
+        throw new Error('Post not found');
+      }
+
+      const commentsRef = ref(database, 'forumComments');
+      const newCommentRef = push(commentsRef);
+      
+      const commentData: ForumComment = {
+        ...comment,
+        id: newCommentRef.key!,
+        timestamp: Date.now(),
+        likes: 0,
+        likedBy: {}
+      };
+      
+      await set(newCommentRef, removeUndefinedValues(commentData));
+      
+      // Update post reply count
+      const post = postSnapshot.val() as ForumPost;
+      await update(postRef, {
+        replyCount: (post.replyCount || 0) + 1
+      });
+      
+      console.log('✅ Forum comment created successfully:', newCommentRef.key);
+      return newCommentRef.key!;
+    } catch (error) {
+      console.error('❌ Error creating forum comment:', error);
+      throw error;
+    }
+  };
+
+  // Get all comments for a forum post
+  export const getForumComments = (postId: string, callback: (comments: ForumComment[]) => void) => {
+    const commentsRef = ref(database, 'forumComments');
+    const commentsQuery = query(commentsRef, orderByChild('postId'), equalTo(postId));
+    
+    const unsubscribe = onValue(commentsQuery, (snapshot) => {
+      const comments: ForumComment[] = [];
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          comments.push({ ...childSnapshot.val(), id: childSnapshot.key });
+        });
+      }
+      // Sort by timestamp ascending (oldest first)
+      const sortedComments = comments.sort((a, b) => a.timestamp - b.timestamp);
+      callback(sortedComments);
+    });
+    
+    return unsubscribe;
+  };
+
+  // Like/unlike a forum comment
+  export const toggleCommentLike = async (commentId: string, userId: string): Promise<boolean> => {
+    try {
+      const commentRef = ref(database, `forumComments/${commentId}`);
+      const snapshot = await get(commentRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('Comment not found');
+      }
+      
+      const comment = snapshot.val() as ForumComment;
+      const likedBy = comment.likedBy || {};
+      const isLiked = likedBy[userId] === true;
+      
+      if (isLiked) {
+        // Unlike
+        delete likedBy[userId];
+        await update(commentRef, {
+          likes: Math.max(0, (comment.likes || 0) - 1),
+          likedBy
+        });
+        return false;
+      } else {
+        // Like
+        likedBy[userId] = true;
+        await update(commentRef, {
+          likes: (comment.likes || 0) + 1,
+          likedBy
+        });
+        return true;
+      }
+    } catch (error) {
+      console.error('❌ Error toggling comment like:', error);
+      throw error;
+    }
+  };
+
+  // Get all forum posts by a specific user
+  export const getUserForumPosts = async (userId: string): Promise<ForumPost[]> => {
+    try {
+      const postsRef = ref(database, 'forumPosts');
+      const userPostsQuery = query(postsRef, orderByChild('authorId'), equalTo(userId));
+      
+      const snapshot = await get(userPostsQuery);
+      const posts: ForumPost[] = [];
+      
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          posts.push({ ...childSnapshot.val(), id: childSnapshot.key });
+        });
+      }
+      
+      return posts.sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+    } catch (error) {
+      console.error('❌ Error getting user forum posts:', error);
+      throw error;
+    }
+  };
+
+  // Get all forum comments by a specific user
+  export const getUserForumComments = async (userId: string): Promise<ForumComment[]> => {
+    try {
+      const commentsRef = ref(database, 'forumComments');
+      const userCommentsQuery = query(commentsRef, orderByChild('authorId'), equalTo(userId));
+      
+      const snapshot = await get(userCommentsQuery);
+      const comments: ForumComment[] = [];
+      
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          comments.push({ ...childSnapshot.val(), id: childSnapshot.key });
+        });
+      }
+      
+      return comments.sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+    } catch (error) {
+      console.error('❌ Error getting user forum comments:', error);
+      throw error;
+    }
+  };

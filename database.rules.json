@@ -1,0 +1,36 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    
+    "items": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    
+    "ratings": {
+      ".read": true,
+      ".write": "auth != null",
+      "$ratingId": {
+        ".validate": "newData.hasChildren(['itemId', 'rating', 'userId', 'timestamp']) && newData.child('rating').val() >= 1 && newData.child('rating').val() <= 5"
+      }
+    },
+    
+    "forumPosts": {
+      ".read": true,
+      ".write": "auth != null",
+      "$postId": {
+        ".validate": "newData.hasChildren(['title', 'content', 'category', 'authorId', 'authorName', 'timestamp']) && newData.child('title').val().length > 0 && newData.child('content').val().length > 0 && newData.child('category').val().length > 0"
+      }
+    },
+    
+    "forumComments": {
+      ".read": true,
+      ".write": "auth != null",
+      "$commentId": {
+        ".validate": "newData.hasChildren(['postId', 'content', 'authorId', 'authorName', 'timestamp']) && newData.child('content').val().length > 0"
+      }
+    }
+  }
+}
+

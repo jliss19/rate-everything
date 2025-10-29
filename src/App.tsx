@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/lib/auth";
 import Index from "./pages/Index";
 import Forum from "./pages/Forum";
+import ItemPage from "./pages/ItemPage";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +22,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/forum" element={<Forum />} />
+            <Route path="/forum/:postId" element={<Forum />} />
+            <Route path="/item/:pageid" element={<ItemPage />} />
+            <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

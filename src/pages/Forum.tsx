@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,145 +24,199 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-
-interface Reply {
-  id: number;
-  author: string;
-  content: string;
-  timestamp: string;
-  likes: number;
-}
-
-interface ForumPost {
-  id: number;
-  title: string;
-  content: string;
-  category: string;
-  author: string;
-  replies: Reply[];
-  likes: number;
-  timestamp: string;
-  isHot: boolean;
-}
-
-const mockPosts: ForumPost[] = [
-  {
-    id: 1,
-    title: "What's the most overrated movie of all time?",
-    content: "I think Avatar is incredibly overrated. Sure, the visuals were groundbreaking, but the story was just Pocahontas in space. Change my mind!",
-    category: "Movies",
-    author: "CinemaDebate",
-    replies: [
-      {
-        id: 1,
-        author: "FilmBuff99",
-        content: "I completely disagree! Avatar revolutionized 3D cinema and created an immersive experience unlike anything before it.",
-        timestamp: "45 minutes ago",
-        likes: 12
-      },
-      {
-        id: 2,
-        author: "MovieCritic",
-        content: "The story might be familiar, but the world-building and technical achievement make it worthy of its success.",
-        timestamp: "30 minutes ago",
-        likes: 8
-      }
-    ],
-    likes: 156,
-    timestamp: "1 hour ago",
-    isHot: true,
-  },
-  {
-    id: 2,
-    title: "Best pizza toppings combination - let's settle this!",
-    content: "I'm convinced that pineapple and jalapeño is the ultimate pizza combo. Sweet, spicy, and absolutely delicious. Prove me wrong!",
-    category: "Food",
-    author: "PizzaLover",
-    replies: [
-      {
-        id: 1,
-        author: "ItalianChef",
-        content: "As an Italian, I'm offended by pineapple on pizza, but I respect your courage to share this opinion 😄",
-        timestamp: "2 hours ago",
-        likes: 34
-      }
-    ],
-    likes: 203,
-    timestamp: "3 hours ago",
-    isHot: true,
-  },
-  {
-    id: 3,
-    title: "Python vs JavaScript for beginners in 2025",
-    content: "With all the new frameworks and tools, which language should absolute beginners start with? I'm mentoring new developers and need advice.",
-    category: "Programming",
-    author: "CodeGuru",
-    replies: [],
-    likes: 98,
-    timestamp: "5 hours ago",
-    isHot: false,
-  },
-];
+import { 
+  ForumPost, 
+  ForumComment,
+  getForumPosts, 
+  createForumPost,
+  getForumPostById,
+  getForumComments,
+  createForumComment,
+  togglePostLike,
+  toggleCommentLike
+} from "@/lib/database";
+import { useAuth } from "@/lib/auth";
+import { convertFirebaseUser, getAnonymousUser } from "@/lib/user";
+import { formatRelativeTime } from "@/lib/utils";
+import { AuthModal } from "@/components/AuthModal";
 
 const Forum = () => {
-  const [posts, setPosts] = useState<ForumPost[]>(mockPosts);
+  const { postId } = useParams<{ postId?: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const [posts, setPosts] = useState<ForumPost[]>([]);
   const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
-  const [replyContent, setReplyContent] = useState("");
+  const [comments, setComments] = useState<ForumComment[]>([]);
+  const [commentContent, setCommentContent] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostCategory, setNewPostCategory] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
-  const handleCreatePost = () => {
+  const currentUser = user ? convertFirebaseUser(user) : getAnonymousUser();
+
+  // Load all posts
+  useEffect(() => {
+    const unsubscribe = getForumPosts((loadedPosts) => {
+      setPosts(loadedPosts);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Load selected post and its comments
+  useEffect(() => {
+    if (postId) {
+      const loadPost = async () => {
+        try {
+          const post = await getForumPostById(postId);
+          if (post) {
+            setSelectedPost(post);
+          } else {
+            toast.error("Post not found");
+            navigate("/forum");
+          }
+        } catch (error) {
+          console.error("Error loading post:", error);
+          toast.error("Failed to load post");
+          navigate("/forum");
+        }
+      };
+
+      loadPost();
+    } else {
+      setSelectedPost(null);
+      setComments([]);
+    }
+  }, [postId, navigate]);
+
+  // Load comments for selected post
+  useEffect(() => {
+    if (selectedPost?.id) {
+      const unsubscribe = getForumComments(selectedPost.id, (loadedComments) => {
+        setComments(loadedComments);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [selectedPost?.id]);
+
+  const handleCreatePost = async () => {
     if (!newPostTitle.trim() || !newPostContent.trim() || !newPostCategory.trim()) {
       toast.error("Please fill in all fields");
       return;
     }
 
-    const newPost: ForumPost = {
-      id: posts.length + 1,
-      title: newPostTitle,
-      content: newPostContent,
-      category: newPostCategory,
-      author: "CurrentUser",
-      replies: [],
-      likes: 0,
-      timestamp: "Just now",
-      isHot: false,
-    };
-
-    setPosts([newPost, ...posts]);
-    setNewPostTitle("");
-    setNewPostContent("");
-    setNewPostCategory("");
-    setIsCreateDialogOpen(false);
-    toast.success("Post created successfully!");
-  };
-
-  const handleReply = () => {
-    if (!replyContent.trim() || !selectedPost) {
-      toast.error("Please enter a reply");
+    if (currentUser.isAnonymous) {
+      toast.error("Please sign in to create a post");
+      setAuthModalOpen(true);
       return;
     }
 
-    const newReply: Reply = {
-      id: selectedPost.replies.length + 1,
-      author: "CurrentUser",
-      content: replyContent,
-      timestamp: "Just now",
-      likes: 0,
-    };
+    setIsSubmitting(true);
+    try {
+      await createForumPost({
+        title: newPostTitle.trim(),
+        content: newPostContent.trim(),
+        category: newPostCategory.trim(),
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+      });
 
-    const updatedPosts = posts.map((post) =>
-      post.id === selectedPost.id
-        ? { ...post, replies: [...post.replies, newReply] }
-        : post
-    );
+      setNewPostTitle("");
+      setNewPostContent("");
+      setNewPostCategory("");
+      setIsCreateDialogOpen(false);
+      toast.success("Post created successfully!");
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create post");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-    setPosts(updatedPosts);
-    setSelectedPost({ ...selectedPost, replies: [...selectedPost.replies, newReply] });
-    setReplyContent("");
-    toast.success("Reply posted!");
+  const handleCreateComment = async () => {
+    if (!commentContent.trim() || !selectedPost) {
+      toast.error("Please enter a comment");
+      return;
+    }
+
+    if (currentUser.isAnonymous) {
+      toast.error("Please sign in to comment");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    try {
+      await createForumComment({
+        postId: selectedPost.id!,
+        content: commentContent.trim(),
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+      });
+
+      setCommentContent("");
+      toast.success("Comment posted!");
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to post comment");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handlePostClick = (post: ForumPost) => {
+    navigate(`/forum/${post.id}`);
+  };
+
+  const handleBack = () => {
+    navigate("/forum");
+  };
+
+  const handleLikePost = async (post: ForumPost) => {
+    if (currentUser.isAnonymous) {
+      toast.error("Please sign in to like posts");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      await togglePostLike(post.id!, currentUser.id);
+    } catch (error) {
+      console.error("Error toggling post like:", error);
+      toast.error("Failed to update like");
+    }
+  };
+
+  const handleLikeComment = async (comment: ForumComment) => {
+    if (currentUser.isAnonymous) {
+      toast.error("Please sign in to like comments");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      await toggleCommentLike(comment.id!, currentUser.id);
+    } catch (error) {
+      console.error("Error toggling comment like:", error);
+      toast.error("Failed to update like");
+    }
+  };
+
+  // Determine if a post is "hot" (has more than 10 likes or 5 comments)
+  const isPostHot = (post: ForumPost) => {
+    return (post.likes || 0) >= 10 || (post.replyCount || 0) >= 5;
+  };
+
+  // Determine if user has liked a post/comment
+  const hasLiked = (item: ForumPost | ForumComment) => {
+    return item.likedBy?.[currentUser.id] === true;
   };
 
   if (selectedPost) {
@@ -185,7 +239,7 @@ const Forum = () => {
           <div className="max-w-3xl mx-auto px-4 py-8">
             <Button
               variant="ghost"
-              onClick={() => setSelectedPost(null)}
+              onClick={handleBack}
               className="mb-6"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -198,17 +252,17 @@ const Forum = () => {
                   <div className="flex-1">
                     <CardTitle className="text-2xl mb-2">{selectedPost.title}</CardTitle>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span className="font-medium">u/{selectedPost.author}</span>
+                      <span className="font-medium">u/{selectedPost.authorName}</span>
                       <span>•</span>
                       <Badge variant="secondary">{selectedPost.category}</Badge>
                       <span>•</span>
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        <span>{selectedPost.timestamp}</span>
+                        <span>{formatRelativeTime(selectedPost.timestamp)}</span>
                       </div>
                     </div>
                   </div>
-                  {selectedPost.isHot && (
+                  {isPostHot(selectedPost) && (
                     <Badge variant="destructive">Hot</Badge>
                   )}
                 </div>
@@ -217,13 +271,17 @@ const Forum = () => {
                 <p className="text-foreground whitespace-pre-wrap">{selectedPost.content}</p>
                 <Separator className="my-4" />
                 <div className="flex items-center gap-4">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant={hasLiked(selectedPost) ? "default" : "ghost"} 
+                    size="sm"
+                    onClick={() => handleLikePost(selectedPost)}
+                  >
                     <ThumbsUp className="h-4 w-4 mr-2" />
-                    {selectedPost.likes} Upvotes
+                    {selectedPost.likes || 0} {selectedPost.likes === 1 ? 'Upvote' : 'Upvotes'}
                   </Button>
                   <Button variant="ghost" size="sm">
                     <MessageCircle className="h-4 w-4 mr-2" />
-                    {selectedPost.replies.length} Comments
+                    {selectedPost.replyCount || 0} {selectedPost.replyCount === 1 ? 'Comment' : 'Comments'}
                   </Button>
                 </div>
               </CardContent>
@@ -231,51 +289,71 @@ const Forum = () => {
 
             <Card className="bg-card border-border mb-6">
               <CardHeader>
-                <CardTitle className="text-base">Comment as u/CurrentUser</CardTitle>
+                <CardTitle className="text-base">Comment as u/{currentUser.name}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Textarea
                   placeholder="What are your thoughts?"
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
+                  value={commentContent}
+                  onChange={(e) => setCommentContent(e.target.value)}
                   className="mb-4"
                   rows={4}
                 />
-                <Button onClick={handleReply}>
+                <Button 
+                  onClick={handleCreateComment}
+                  disabled={isSubmittingComment || !commentContent.trim()}
+                >
                   <Send className="mr-2 h-4 w-4" />
-                  Comment
+                  {isSubmittingComment ? "Posting..." : "Comment"}
                 </Button>
               </CardContent>
             </Card>
 
             <div className="space-y-4">
-              {selectedPost.replies.map((reply) => (
-                <Card key={reply.id} className="bg-card border-border">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex flex-col items-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                          <ThumbsUp className="h-3 w-3" />
-                        </Button>
-                        <span className="text-xs font-medium">{reply.likes}</span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <span className="font-medium">u/{reply.author}</span>
-                          <span>•</span>
-                          <span>{reply.timestamp}</span>
-                        </div>
-                        <p className="text-foreground">{reply.content}</p>
-                      </div>
-                    </div>
+              {comments.length === 0 ? (
+                <Card className="bg-card border-border">
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    <p>No comments yet. Be the first to comment!</p>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                comments.map((comment) => (
+                  <Card key={comment.id} className="bg-card border-border">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col items-center gap-1">
+                          <Button 
+                            variant={hasLiked(comment) ? "default" : "ghost"} 
+                            size="sm" 
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleLikeComment(comment)}
+                          >
+                            <ThumbsUp className="h-3 w-3" />
+                          </Button>
+                          <span className="text-xs font-medium">{comment.likes || 0}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                            <span className="font-medium">u/{comment.authorName}</span>
+                            <span>•</span>
+                            <span>{formatRelativeTime(comment.timestamp)}</span>
+                          </div>
+                          <p className="text-foreground whitespace-pre-wrap">{comment.content}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
         </main>
 
         <Footer />
+        <AuthModal 
+          open={authModalOpen} 
+          onOpenChange={setAuthModalOpen} 
+        />
       </div>
     );
   }
@@ -340,8 +418,12 @@ const Forum = () => {
                       rows={6}
                     />
                   </div>
-                  <Button onClick={handleCreatePost} className="w-full">
-                    Create Post
+                  <Button 
+                    onClick={handleCreatePost} 
+                    className="w-full"
+                    disabled={isSubmitting || !newPostTitle.trim() || !newPostContent.trim() || !newPostCategory.trim()}
+                  >
+                    {isSubmitting ? "Creating..." : "Create Post"}
                   </Button>
                 </div>
               </DialogContent>
@@ -349,72 +431,81 @@ const Forum = () => {
           </div>
 
           <div className="space-y-3">
-            {posts.map((post) => (
-              <Card
-                key={post.id}
-                className="bg-card border-border hover:border-primary transition-colors cursor-pointer"
-                onClick={() => setSelectedPost(post)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant="secondary" className="text-xs">{post.category}</Badge>
-                      <span>•</span>
-                      <span>Posted by u/{post.author}</span>
-                      <span>•</span>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{post.timestamp}</span>
-                      </div>
-                      {post.isHot && (
-                        <>
-                          <span>•</span>
-                          <Badge variant="destructive" className="text-xs">Hot</Badge>
-                        </>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-2 hover:text-primary"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </Button>
-                      <span className="text-sm font-medium min-w-[2rem] text-center">{post.likes}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 px-2 hover:text-destructive"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ThumbsUp className="h-4 w-4 rotate-180" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <h3 className="text-lg font-semibold text-foreground hover:text-primary transition-colors mb-2">
-                    {post.title}
-                  </h3>
-                  
-                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{post.content}</p>
-                  
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1 hover:bg-muted rounded px-2 py-1">
-                      <MessageCircle className="h-4 w-4" />
-                      <span>{post.replies.length} Comments</span>
-                    </div>
-                  </div>
+            {posts.length === 0 ? (
+              <Card className="bg-card border-border">
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium mb-2">No posts yet</p>
+                  <p>Be the first to start a discussion!</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              posts.map((post) => (
+                <Card
+                  key={post.id}
+                  className="bg-card border-border hover:border-primary transition-colors cursor-pointer"
+                  onClick={() => handlePostClick(post)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="secondary" className="text-xs">{post.category}</Badge>
+                        <span>•</span>
+                        <span>Posted by u/{post.authorName}</span>
+                        <span>•</span>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatRelativeTime(post.timestamp)}</span>
+                        </div>
+                        {isPostHot(post) && (
+                          <>
+                            <span>•</span>
+                            <Badge variant="destructive" className="text-xs">Hot</Badge>
+                          </>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 px-2 hover:text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLikePost(post);
+                          }}
+                        >
+                          <ThumbsUp className={`h-4 w-4 ${hasLiked(post) ? 'fill-current' : ''}`} />
+                        </Button>
+                        <span className="text-sm font-medium min-w-[2rem] text-center">{post.likes || 0}</span>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-lg font-semibold text-foreground hover:text-primary transition-colors mb-2">
+                      {post.title}
+                    </h3>
+                    
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{post.content}</p>
+                    
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1 hover:bg-muted rounded px-2 py-1">
+                        <MessageCircle className="h-4 w-4" />
+                        <span>{post.replyCount || 0} {post.replyCount === 1 ? 'Comment' : 'Comments'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       </main>
 
       <Footer />
+      <AuthModal 
+        open={authModalOpen} 
+        onOpenChange={setAuthModalOpen} 
+      />
     </div>
   );
 };
