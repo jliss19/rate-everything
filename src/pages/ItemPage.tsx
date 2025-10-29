@@ -1,15 +1,14 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { SearchBar } from "@/components/SearchBar";
-import { SearchResults, WikiItem } from "@/components/SearchResults";
-import { TopRankings } from "@/components/TopRankings";
-import { ReviewsList } from "@/components/ReviewsList";
-import { ForumsList } from "@/components/ForumsList";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ItemDetail } from "@/components/ItemDetail";
+import { WikiItem } from "@/components/SearchResults";
+import { getWikipediaPage } from "@/lib/wikimedia";
 import { Footer } from "@/components/Footer";
 import { AuthModal } from "@/components/AuthModal";
-import { searchWikipedia } from "@/lib/wikimedia";
+import { SearchBar } from "@/components/SearchBar";
 import { useAuth } from "@/lib/auth";
 import { convertFirebaseUser } from "@/lib/user";
+import { Link } from "react-router-dom";
 import { TrendingUp, Star, Menu, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,43 +19,99 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const Index = () => {
-  const [searchResults, setSearchResults] = useState<WikiItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+const ItemPage = () => {
+  const { pageid } = useParams<{ pageid: string }>();
   const navigate = useNavigate();
-  
+  const [item, setItem] = useState<WikiItem | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const { user, logout } = useAuth();
 
-  const handleSearch = async (query: string) => {
-    setIsLoading(true);
-    setHasSearched(true);
-    
-    try {
-      const results = await searchWikipedia(query);
-      setSearchResults(results);
-    } catch (error) {
-      console.error("Search error:", error);
-      setSearchResults([]);
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    const loadItem = async () => {
+      if (!pageid) {
+        navigate("/");
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const pageIdNum = parseInt(pageid, 10);
+        if (isNaN(pageIdNum)) {
+          navigate("/");
+          return;
+        }
+
+        const itemData = await getWikipediaPage(pageIdNum);
+        if (!itemData) {
+          navigate("/");
+          return;
+        }
+        setItem(itemData);
+      } catch (error) {
+        console.error("Error loading item:", error);
+        navigate("/");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadItem();
+  }, [pageid, navigate]);
+
+  const handleBack = () => {
+    navigate("/");
   };
 
-  const handleItemSelect = (item: WikiItem) => {
-    navigate(`/item/${item.pageid}`);
+  const handleSearch = async (query: string) => {
+    setSearchLoading(true);
+    try {
+      // Navigate to home page with search - this could be enhanced later
+      navigate("/");
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   const handleLogout = async () => {
     try {
       await logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
   };
 
   const currentUser = user ? convertFirebaseUser(user) : null;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="border-b border-border bg-card">
+          <div className="container mx-auto px-6 py-4">
+            <div className="flex items-center gap-4">
+              <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap hover:opacity-80 transition-opacity">
+                RateEverything
+              </Link>
+              <div className="flex-1">
+                <SearchBar onSearch={handleSearch} loading={searchLoading} />
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading item...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!item) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -87,18 +142,12 @@ const Index = () => {
             </DropdownMenu>
             
             <div className="flex-1">
-              <SearchBar onSearch={handleSearch} loading={isLoading} />
+              <SearchBar onSearch={handleSearch} loading={searchLoading} />
             </div>
             
             <Link to="/forum">
               <Button variant="outline" className="whitespace-nowrap">
                 Forum
-              </Button>
-            </Link>
-
-            <Link to="/toprated">
-              <Button variant="outline" className="whitespace-nowrap">
-                Top Rated
               </Button>
             </Link>
             
@@ -145,39 +194,8 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8 flex-1">
-        {!hasSearched ? (
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left Column - Top Rankings */}
-            <div className="lg:col-span-1">
-              <TopRankings />
-            </div>
-            
-            {/* Middle Column - Recent Reviews */}
-            <div className="lg:col-span-1">
-              <ReviewsList />
-            </div>
-            
-            {/* Right Column - Active Forums */}
-            <div className="lg:col-span-1">
-              <ForumsList />
-            </div>
-          </div>
-        ) : (
-          <div>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <span className="ml-3 text-muted-foreground">Searching...</span>
-              </div>
-            ) : (
-              <SearchResults 
-                results={searchResults} 
-                onItemSelect={handleItemSelect}
-              />
-            )}
-          </div>
-        )}
+      <main className="flex-1 p-6">
+        <ItemDetail item={item} onBack={handleBack} />
       </main>
       
       <Footer />
@@ -190,4 +208,5 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default ItemPage;
+
