@@ -16,7 +16,6 @@ export const DisplayTopRated = () => {
     fetchData();
   }, []);
 
-
   return (
     <div className="grid gap-3">
       {item.map((item) => (
