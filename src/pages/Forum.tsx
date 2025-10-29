@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,59 +30,11 @@ import { DisplayForums } from "@/components/DisplayForums";
 const Forum = () => {
   const [posts, setPosts] = useState([]);
   const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
-  const [comments, setComments] = useState<ForumComment[]>([]);
-  const [commentContent, setCommentContent] = useState("");
+  const [replyContent, setReplyContent] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostCategory, setNewPostCategory] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-
-  const currentUser = user ? convertFirebaseUser(user) : getAnonymousUser();
-
-  // Load all posts
-  useEffect(() => {
-    const unsubscribe = getForumPosts((loadedPosts) => {
-      setPosts(loadedPosts);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Load selected post and its comments
-  useEffect(() => {
-    if (postId) {
-      const loadPost = async () => {
-        try {
-          const post = await getForumPostById(postId);
-          if (post) {
-            setSelectedPost(post);
-          } else {
-            toast.error("Post not found");
-            navigate("/forum");
-          }
-        } catch (error) {
-          console.error("Error loading post:", error);
-          toast.error("Failed to load post");
-          navigate("/forum");
-        }
-      };
-
-      loadPost();
-    } else {
-      setSelectedPost(null);
-      setComments([]);
-    }
-  }, [postId, navigate]);
-
-  // Load comments for selected post
-  useEffect(() => {
-    if (selectedPost?.id) {
-      const unsubscribe = getForumComments(selectedPost.id, (loadedComments) => {
-        setComments(loadedComments);
-      });
 
   const handleCreatePost = async () => {
     if (!newPostTitle.trim() || !newPostContent.trim()) {
@@ -175,12 +127,8 @@ const Forum = () => {
                       rows={6}
                     />
                   </div>
-                  <Button 
-                    onClick={handleCreatePost} 
-                    className="w-full"
-                    disabled={isSubmitting || !newPostTitle.trim() || !newPostContent.trim() || !newPostCategory.trim()}
-                  >
-                    {isSubmitting ? "Creating..." : "Create Post"}
+                  <Button onClick={handleCreatePost} className="w-full">
+                    Create Post
                   </Button>
                 </div>
               </DialogContent>
@@ -193,10 +141,6 @@ const Forum = () => {
       </main>
 
       <Footer />
-      <AuthModal 
-        open={authModalOpen} 
-        onOpenChange={setAuthModalOpen} 
-      />
     </div>
   );
 };
