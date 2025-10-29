@@ -1,51 +1,72 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { MessageCircle, ThumbsUp, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ForumPost, getForumPosts } from "@/lib/database";
-import { formatRelativeTime } from "@/lib/utils";
+
+interface ForumPost {
+  id: number;
+  title: string;
+  category: string;
+  author: string;
+  replies: number;
+  likes: number;
+  timestamp: string;
+  isHot: boolean;
+}
+
+const mockForumPosts: ForumPost[] = [
+  {
+    id: 1,
+    title: "What's the most overrated movie of all time?",
+    category: "Movies",
+    author: "CinemaDebate",
+    replies: 234,
+    likes: 156,
+    timestamp: "1 hour ago",
+    isHot: true,
+  },
+  {
+    id: 2,
+    title: "Best pizza toppings combination - let's settle this!",
+    category: "Food",
+    author: "PizzaLover",
+    replies: 189,
+    likes: 203,
+    timestamp: "3 hours ago",
+    isHot: true,
+  },
+  {
+    id: 3,
+    title: "Python vs JavaScript for beginners in 2025",
+    category: "Programming",
+    author: "CodeGuru",
+    replies: 142,
+    likes: 98,
+    timestamp: "5 hours ago",
+    isHot: false,
+  },
+  {
+    id: 4,
+    title: "Underrated travel destinations you MUST visit",
+    category: "Travel",
+    author: "Wanderlust",
+    replies: 87,
+    likes: 124,
+    timestamp: "8 hours ago",
+    isHot: false,
+  },
+  {
+    id: 5,
+    title: "Are modern video games better than classics?",
+    category: "Gaming",
+    author: "RetroGamer",
+    replies: 312,
+    likes: 245,
+    timestamp: "12 hours ago",
+    isHot: true,
+  },
+];
 
 export const ForumsList = () => {
-  const navigate = useNavigate();
-  const [posts, setPosts] = useState<ForumPost[]>([]);
-
-  useEffect(() => {
-    const unsubscribe = getForumPosts((loadedPosts) => {
-      // Show only top 5 posts for the homepage
-      setPosts(loadedPosts.slice(0, 5));
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Determine if a post is "hot" (has more than 10 likes or 5 comments)
-  const isPostHot = (post: ForumPost) => {
-    return (post.likes || 0) >= 10 || (post.replyCount || 0) >= 5;
-  };
-
-  const handlePostClick = (post: ForumPost) => {
-    navigate(`/forum/${post.id}`);
-  };
-
-  if (posts.length === 0) {
-    return (
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <MessageCircle className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold text-foreground">Active Forums</h2>
-        </div>
-        
-        <Card className="bg-card border-border">
-          <CardContent className="p-6 text-center text-muted-foreground">
-            <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No forum posts yet. Be the first to start a discussion!</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div>
       <div className="flex items-center gap-2 mb-4">
@@ -54,12 +75,8 @@ export const ForumsList = () => {
       </div>
       
       <div className="grid gap-3">
-        {posts.map((post) => (
-          <Card 
-            key={post.id} 
-            className="bg-card border-border hover:border-primary transition-colors cursor-pointer"
-            onClick={() => handlePostClick(post)}
-          >
+        {mockForumPosts.map((post) => (
+          <Card key={post.id} className="bg-card border-border hover:border-primary transition-colors cursor-pointer">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <div className="flex-1">
@@ -67,27 +84,27 @@ export const ForumsList = () => {
                     <h3 className="font-semibold text-foreground hover:text-primary transition-colors">
                       {post.title}
                     </h3>
-                    {isPostHot(post) && (
+                    {post.isHot && (
                       <Badge variant="destructive" className="text-xs">Hot</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="font-medium">{post.authorName}</span>
+                    <span className="font-medium">{post.author}</span>
                     <span className="text-xs">{post.category}</span>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      <span className="text-xs">{formatRelativeTime(post.timestamp)}</span>
+                      <span className="text-xs">{post.timestamp}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <MessageCircle className="h-4 w-4" />
-                    <span>{post.replyCount || 0}</span>
+                    <span>{post.replies}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <ThumbsUp className="h-4 w-4" />
-                    <span>{post.likes || 0}</span>
+                    <span>{post.likes}</span>
                   </div>
                 </div>
               </div>
