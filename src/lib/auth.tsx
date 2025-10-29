@@ -9,12 +9,13 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { createOrUpdateUserProfile } from './database';
 
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, profileData?: { name?: string; photoURL?: string; profileDescription?: string }) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -54,9 +55,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    profileData?: { name?: string; photoURL?: string; profileDescription?: string }
+  ) => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user profile in Firebase Realtime Database
+      // Note: Firebase Auth handles password hashing securely, so we don't store password hashes
+      await createOrUpdateUserProfile(user.uid, {
+        email: user.email || email,
+        name: profileData?.name || user.email?.split('@')[0] || 'User',
+        photoURL: profileData?.photoURL || user.photoURL,
+        profileDescription: profileData?.profileDescription,
+      });
     } catch (error) {
       throw error;
     }
@@ -65,7 +80,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+
+      // Create or update user profile in Firebase Realtime Database
+      await createOrUpdateUserProfile(user.uid, {
+        email: user.email || '',
+        name: user.displayName || user.email?.split('@')[0] || 'User',
+        photoURL: user.photoURL || undefined,
+      });
     } catch (error) {
       throw error;
     }

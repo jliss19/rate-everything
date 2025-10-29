@@ -95,6 +95,12 @@ const Index = () => {
                 Forum
               </Button>
             </Link>
+
+            <Link to="/toprated">
+              <Button variant="outline" className="whitespace-nowrap">
+                Top Rated
+              </Button>
+            </Link>
             
             {currentUser ? (
               <DropdownMenu>

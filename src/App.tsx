@@ -9,8 +9,12 @@ import Forum from "./pages/Forum";
 import ItemPage from "./pages/ItemPage";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import TopRated from "./pages/TopRated";
 
 const queryClient = new QueryClient();
+
+// Get base path from environment or default to root
+const basePath = import.meta.env.BASE_URL || '/';
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -18,13 +22,14 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename={basePath}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/forum" element={<Forum />} />
             <Route path="/forum/:postId" element={<Forum />} />
             <Route path="/item/:pageid" element={<ItemPage />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/toprated" element={<TopRated />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
