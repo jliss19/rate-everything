@@ -50,6 +50,16 @@ export interface ForumPost {
   replies: ForumPost[];
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  photoURL?: string;
+  profileDescription?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface ItemStats {
   averageRating: number;
   totalRatings: number;
@@ -536,6 +546,68 @@ export const getMostReviewedItems = async (limit: number = 10): Promise<(Databas
     .slice(0, limit);
 
   return mostReviewedItems;
+};
+
+// Create or update user profile in /users
+export const createOrUpdateUserProfile = async (
+  userId: string,
+  profileData: {
+    email: string;
+    name: string;
+    photoURL?: string;
+    profileDescription?: string;
+  }
+): Promise<void> => {
+  try {
+    const userRef = ref(database, `users/${userId}`);
+    const snapshot = await get(userRef);
+
+    const now = Date.now();
+
+    if (snapshot.exists()) {
+      // Update existing profile
+      const existingProfile = snapshot.val() as UserProfile;
+      const updatedProfile: UserProfile = {
+        ...existingProfile,
+        ...profileData,
+        updatedAt: now,
+      };
+      await set(userRef, removeUndefinedValues(updatedProfile));
+      console.log('✅ User profile updated successfully:', userId);
+    } else {
+      // Create new profile
+      const newProfile: UserProfile = {
+        id: userId,
+        email: profileData.email,
+        name: profileData.name,
+        photoURL: profileData.photoURL,
+        profileDescription: profileData.profileDescription,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await set(userRef, removeUndefinedValues(newProfile));
+      console.log('✅ User profile created successfully:', userId);
+    }
+  } catch (error) {
+    console.error('❌ Error creating/updating user profile:', error);
+    throw error;
+  }
+};
+
+// Get user profile by ID
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  try {
+    const userRef = ref(database, `users/${userId}`);
+    const snapshot = await get(userRef);
+
+    if (snapshot.exists()) {
+      return snapshot.val() as UserProfile;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting user profile:', error);
+    throw error;
+  }
 };
 // Add or update rating (convenience function that handles both cases)
 export const addOrUpdateRating = async (

@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, Lock, User } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AuthModalProps {
   open: boolean;
@@ -24,6 +25,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onOpenChange }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
+  const [profileDescription, setProfileDescription] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('signin');
@@ -63,11 +67,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onOpenChange }) => {
     }
 
     try {
-      await signUp(email, password);
+      await signUp(email, password, {
+        name: name || undefined,
+        photoURL: photoURL || undefined,
+        profileDescription: profileDescription || undefined,
+      });
       onOpenChange(false);
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      setName('');
+      setProfileDescription('');
+      setPhotoURL('');
     } catch (error: any) {
       setError(error.message || 'Failed to create account');
     } finally {
@@ -93,6 +104,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onOpenChange }) => {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
+    setName('');
+    setProfileDescription('');
+    setPhotoURL('');
     setError('');
   };
 
@@ -169,6 +183,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onOpenChange }) => {
           <TabsContent value="signup" className="space-y-4">
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="signup-name">Display Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-name"
+                    type="text"
+                    placeholder="Enter your display name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -214,6 +243,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ open, onOpenChange }) => {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-photo-url">Profile Picture URL (Optional)</Label>
+                <Input
+                  id="signup-photo-url"
+                  type="url"
+                  placeholder="https://example.com/photo.jpg"
+                  value={photoURL}
+                  onChange={(e) => setPhotoURL(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-description">Profile Description (Optional)</Label>
+                <Textarea
+                  id="signup-description"
+                  placeholder="Tell us about yourself..."
+                  value={profileDescription}
+                  onChange={(e) => setProfileDescription(e.target.value)}
+                  rows={3}
+                />
               </div>
 
               {error && (
