@@ -11,13 +11,16 @@ import TopRated from "./pages/TopRated";
 
 const queryClient = new QueryClient();
 
+// Get base path from environment or default to root
+const basePath = import.meta.env.BASE_URL || '/';
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename={basePath}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/forum" element={<Forum />} />
